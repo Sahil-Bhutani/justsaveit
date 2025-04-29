@@ -201,7 +201,7 @@ const Homepage = () => {
             value={roomContent}
             onChange={handleRoomContent}
             ref={textareaRef}
-            rows={10000}
+            rows={10}
           />
 
           <div className="text-sm flex justify-between">
