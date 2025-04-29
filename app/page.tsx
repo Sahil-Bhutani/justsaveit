@@ -145,8 +145,33 @@ const Homepage = () => {
     if (storedRoomId) {
       setRoomId(storedRoomId);
     }
+    if (roomId.length > 0) {
+      fetch('/api/createroom', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ room_id: roomId }),
+      })
+        .then((res) => res.json())
+        .then((res) => {
+          if (res.status === 'success') {
+          } else if (res.status === 'already') {
+            setResData({
+              ...res.data,
+              last_modified: getDateFormat(res.data.last_modified),
+            });
+            setRoomContent(res.data.content);
+          }
+          setSaveMsg('saved.');
+          setRoomIdChanged(false);
+        })
+        .catch((err) => {
+          setError('Something went wrong. Please try again later.');
+          console.error(err);
+        });
+    }
   }, []);
-  
 
   return (
     <>
