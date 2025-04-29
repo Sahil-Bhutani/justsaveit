@@ -84,7 +84,6 @@ const Homepage = () => {
         .then((res) => {
           if (res.status === 'success') {
             setResData({ content: '' });
-            setRoomContent('');
           } else if (res.status === 'already') {
             setResData({
               ...res.data,
@@ -177,7 +176,7 @@ const Homepage = () => {
             value={roomContent}
             onChange={handleRoomContent}
             ref={textareaRef}
-            rows={10}
+            rows={10000}
           />
 
           <div className="text-sm flex justify-between">
