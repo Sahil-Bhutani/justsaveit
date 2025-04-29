@@ -1,103 +1,205 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import React, { useState, useEffect, useRef } from 'react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
+const Homepage = () => {
+  const [roomId, setRoomId] = useState<string>('');
+  const [resData, setResData] = useState<{
+    content?: string;
+    last_modified?: string;
+  }>({ content: '' });
+  const [roomContent, setRoomContent] = useState<string>('');
+  const [error, setError] = useState<string>('');
+  const [saveMsg, setSaveMsg] = useState<string>('saved.');
+  const [isRoomIdChanged, setRoomIdChanged] = useState(true);
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const roomIdRef = useRef<HTMLInputElement>(null);
+
+  const now = React.useCallback(() => {
+    const tzoffset = new Date().getTimezoneOffset() * 60000;
+    return new Date(Date.now() - tzoffset)
+      .toISOString()
+      .slice(0, 19)
+      .replace('T', ' ');
+  },[]);
+
+  const getDateFormat = React.useCallback((dateStr: string) => {
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    };
+    return `Last Modified - ${new Date(dateStr).toLocaleString(
+      'en-US',
+      options
+    )}`;
+  },[]);
+
+  const characterSaveMsg = React.useCallback(() => {
+    if (roomContent.length === 0) {
+      return `No character ${saveMsg}`;
+    } else {
+      return `${roomContent.length} character ${saveMsg}`;
+    }
+  },[roomContent,saveMsg]);
+
+  const focusRoomContent = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      textareaRef.current?.focus();
+    }
+  };
+
+  const handleRoomId = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setRoomId(e.target.value);
+    setRoomIdChanged(true);
+  },[]);
+
+  const handleRoomContent = React.useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setRoomContent(e.target.value);
+    if (roomId.length > 0) setSaveMsg('saving....');
+  },[roomId]);
+
+  const handleRoomBlur = React.useCallback((e: React.FocusEvent<HTMLInputElement>) => {
+    const { value } = e.target;
+    if (value.length > 0 && isRoomIdChanged) {
+      const formData = new FormData();
+      formData.append('room_id', value);
+
+      fetch('/api/createroom', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',  // ✅ Critical
+        },
+        body: JSON.stringify({ room_id: roomId }), // ✅ Must be JSON
+      })
+        .then((res) => res.json())
+        .then((res) => {
+          if (res.status === 'success') {
+            setResData({ content: '' });
+            setRoomContent('');
+          } else if (res.status === 'already') {
+            setResData({
+              ...res.data,
+              last_modified: getDateFormat(res.data.last_modified),
+            });
+            setRoomContent(res.data.content);
+          }
+          setSaveMsg('saved.');
+          setRoomIdChanged(false);
+          localStorage.setItem('localRoomId', roomId);
+        })
+        .catch((err) => {
+          setError('Something went wrong. Please try again later.');
+          console.error(err);
+        });
+    }
+  },[isRoomIdChanged,roomId]);
+
+  useEffect(() => {
+    let timeOutId: ReturnType<typeof setTimeout>;
+
+    const updateContent = (textData: string) => {
+      fetch('/api/updateroom', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          room_id: roomId,
+          content: textData,
+          last_modified: now(),
+        }),
+      })
+        .then((res) => res.json())
+        .then(() => {
+          setSaveMsg('saved.');
+          setResData({ ...resData, last_modified: getDateFormat(now()) });
+        });
+    };
+    
+    
+
+    if (roomId.length > 0 && resData.content !== roomContent) {
+      timeOutId = setTimeout(() => {
+        updateContent(roomContent);
+      }, 1000);
+    }
+
+    return () => clearTimeout(timeOutId);
+  }, [roomContent]);
+
+  useEffect(() => {
+    const id = localStorage.getItem('localRoomId');
+    if (id && textareaRef.current) textareaRef.current.focus();
+  }, []);
+
+  useEffect(() => {
+    const storedRoomId = localStorage.getItem('localRoomId');
+    if (storedRoomId) {
+      setRoomId(storedRoomId);
+    }
+  }, []);
+  
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <>
+      <nav className="bg-black text-white text-center p-4 font-bold text-lg sticky top-0 z-50">
+        Save your text online
+      </nav>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      {error ? (
+        <div className="h-[90vh] flex flex-col items-center justify-center text-center space-y-4">
+          <img src="/error.png" alt="error" className="w-[300px]" />
+          <h1 className="text-2xl font-semibold">Something went wrong...</h1>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
+      ) : (
+        <div className="container max-w-2xl mx-auto mt-6 space-y-4">
+          <Input
+            type="text"
+            placeholder="Enter room id"
+            value={roomId}
+            ref={roomIdRef}
+            onKeyDown={focusRoomContent}
+            onChange={handleRoomId}
+            onBlur={handleRoomBlur}
+          />
+
+          <Textarea
+            placeholder="Your content..."
+            value={roomContent}
+            onChange={handleRoomContent}
+            ref={textareaRef}
+            rows={10}
+          />
+
+          <div className="text-sm flex justify-between">
+            <div>
+              {roomId.length > 0 ? characterSaveMsg() : 'Please Enter room id'}
+            </div>
+            <div>{resData.last_modified}</div>
+          </div>
+        </div>
+      )}
+
+      <footer className="bg-black text-white text-center text-sm py-2 mt-10 fixed bottom-0 w-full">
         <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+          href="#"
           target="_blank"
           rel="noopener noreferrer"
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
+          Developed by an Unknown Developer
         </a>
       </footer>
-    </div>
+    </>
   );
-}
+};
+
+export default Homepage;
