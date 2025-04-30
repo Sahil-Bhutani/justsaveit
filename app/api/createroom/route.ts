@@ -6,7 +6,10 @@ export async function POST(req: Request) {
   const room_id = body.room_id;
 
   if (!room_id) {
-    return NextResponse.json({ status: 'error', message: 'Missing room_id' }, { status: 400 });
+    return NextResponse.json(
+      { status: 'error', message: 'Missing room_id' },
+      { status: 400 }
+    );
   }
 
   try {
@@ -18,7 +21,6 @@ export async function POST(req: Request) {
 
     if (existing) {
       return NextResponse.json({
-        
         status: 'already',
         data: {
           content: existing.content,
@@ -27,19 +29,26 @@ export async function POST(req: Request) {
       });
     }
 
+    const now = new Date().toISOString();
+
     await collection.insertOne({
       room_id,
       content: '',
-      last_modified: new Date().toISOString(),
+      last_modified: now,
     });
 
-    return NextResponse.json({ status: 'success',
-        data: {
-          content: existing.content,
-          last_modified: existing.last_modified, });
+    return NextResponse.json({
+      status: 'success',
+      data: {
+        content: '',
+        last_modified: now,
+      },
+    });
   } catch (error) {
-    console.error(error);
-    console.log("Error is",error)
-    return NextResponse.json({ status: 'error', message: 'Internal server error' }, { status: 500 });
+    console.error('Error:', error);
+    return NextResponse.json(
+      { status: 'error', message: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
