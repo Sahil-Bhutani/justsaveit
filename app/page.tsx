@@ -1,16 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const Homepage = () => {
   const [roomId, setRoomId] = useState<string>('');
-  const [resData, setResData] = useState<{
-    content?: string;
-    last_modified?: string;
-  }>({ content: '' });
+  const [resData, setResData] = useState<{ content?: string; last_modified?: string }>({ content: '' });
   const [roomContent, setRoomContent] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [saveMsg, setSaveMsg] = useState<string>('saved.');
@@ -19,15 +16,12 @@ const Homepage = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const roomIdRef = useRef<HTMLInputElement>(null);
 
-  const now = React.useCallback(() => {
+  const now = useCallback(() => {
     const tzoffset = new Date().getTimezoneOffset() * 60000;
-    return new Date(Date.now() - tzoffset)
-      .toISOString()
-      .slice(0, 19)
-      .replace('T', ' ');
-  },[]);
+    return new Date(Date.now() - tzoffset).toISOString().slice(0, 19).replace('T', ' ');
+  }, []);
 
-  const getDateFormat = React.useCallback((dateStr: string) => {
+  const getDateFormat = useCallback((dateStr: string) => {
     const options: Intl.DateTimeFormatOptions = {
       weekday: 'long',
       year: 'numeric',
@@ -37,19 +31,14 @@ const Homepage = () => {
       minute: '2-digit',
       second: '2-digit',
     };
-    return `Last Modified - ${new Date(dateStr).toLocaleString(
-      'en-US',
-      options
-    )}`;
-  },[]);
+    return `Last Modified - ${new Date(dateStr).toLocaleString('en-US', options)}`;
+  }, []);
 
-  const characterSaveMsg = React.useCallback(() => {
-    if (roomContent.length === 0) {
-      return `No character ${saveMsg}`;
-    } else {
-      return `${roomContent.length} character ${saveMsg}`;
-    }
-  },[roomContent,saveMsg]);
+  const characterSaveMsg = useCallback(() => {
+    return roomContent.length === 0
+      ? `No character ${saveMsg}`
+      : `${roomContent.length} character ${saveMsg}`;
+  }, [roomContent, saveMsg]);
 
   const focusRoomContent = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -57,128 +46,90 @@ const Homepage = () => {
     }
   };
 
-  const handleRoomId = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleRoomId = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setRoomId(e.target.value);
     setRoomIdChanged(true);
-  },[]);
+  }, []);
 
-  const handleRoomContent = React.useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleRoomContent = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setRoomContent(e.target.value);
     if (roomId.length > 0) setSaveMsg('saving....');
-  },[roomId]);
+  }, [roomId]);
 
-  const handleRoomBlur = React.useCallback((e: React.FocusEvent<HTMLInputElement>) => {
+  const fetchRoomData = useCallback(async (id: string) => {
+    try {
+      const res = await fetch('/api/createroom', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ room_id: id }),
+      });
+
+      const data = await res.json();
+
+      if (data.status === 'success' || data.status === 'already') {
+        setResData({
+          ...data.data,
+          last_modified: getDateFormat(data.data.last_modified),
+        });
+        if (data.status === 'already') {
+          setRoomContent(data.data.content);
+        }
+        setSaveMsg('saved.');
+        setRoomIdChanged(false);
+        localStorage.setItem('localRoomId', id);
+      } else {
+        setError('Failed to create or retrieve room.');
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Something went wrong. Please try again later.');
+    }
+  }, [getDateFormat]);
+
+  const handleRoomBlur = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
     const { value } = e.target;
     if (value.length > 0 && isRoomIdChanged) {
-      const formData = new FormData();
-      formData.append('room_id', value);
-
-      fetch('/api/createroom', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',  // ✅ Critical
-        },
-        body: JSON.stringify({ room_id: roomId }), // ✅ Must be JSON
-      })
-        .then((res) => res.json())
-        .then((res) => {
-          if (res.status === 'success') {
-            setResData({
-              ...res.data,
-              last_modified: getDateFormat(res.data.last_modified),
-            });
-          } else if (res.status === 'already') {
-            setResData({
-              ...res.data,
-              last_modified: getDateFormat(res.data.last_modified),
-            });
-            setRoomContent(res.data.content);
-          }
-          setSaveMsg('saved.');
-          setRoomIdChanged(false);
-          localStorage.setItem('localRoomId', roomId);
-        })
-        .catch((err) => {
-          setError('Something went wrong. Please try again later.');
-          console.error(err);
-        });
+      fetchRoomData(value);
     }
-  },[isRoomIdChanged,roomId]);
+  }, [isRoomIdChanged, fetchRoomData]);
+
+  useEffect(() => {
+    const id = localStorage.getItem('localRoomId');
+    if (id) {
+      setRoomId(id);
+      fetchRoomData(id);
+    }
+  }, [fetchRoomData]);
 
   useEffect(() => {
     let timeOutId: ReturnType<typeof setTimeout>;
 
-    const updateContent = (textData: string) => {
-      fetch('/api/updateroom', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          room_id: roomId,
-          content: textData,
-          last_modified: now(),
-        }),
-      })
-        .then((res) => res.json())
-        .then(() => {
-          setSaveMsg('saved.');
-          setResData({ ...resData, last_modified: getDateFormat(now()) });
-        });
-    };
-    
-    
-
     if (roomId.length > 0 && resData.content !== roomContent) {
       timeOutId = setTimeout(() => {
-        updateContent(roomContent);
+        fetch('/api/updateroom', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            room_id: roomId,
+            content: roomContent,
+            last_modified: now(),
+          }),
+        })
+          .then((res) => res.json())
+          .then(() => {
+            setSaveMsg('saved.');
+            setResData((prev) => ({
+              ...prev,
+              last_modified: getDateFormat(now()),
+            }));
+          });
       }, 1000);
     }
 
     return () => clearTimeout(timeOutId);
-  }, [roomContent]);
-
-  useEffect(() => {
-    const id = localStorage.getItem('localRoomId');
-    if (id && textareaRef.current) textareaRef.current.focus();
-  }, []);
-
-  useEffect(() => {
-    const storedRoomId = localStorage.getItem('localRoomId');
-    if (storedRoomId) {
-      setRoomId(storedRoomId);
-    }
-    if (storedRoomId.length > 0) {
-      fetch('/api/createroom', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ room_id: storedRoomId }),
-      })
-        .then((res) => res.json())
-        .then((res) => {
-          if (res.status === 'success') {
-            setResData({
-              ...res.data,
-              last_modified: getDateFormat(res.data.last_modified),
-            });
-          } else if (res.status === 'already') {
-            setResData({
-              ...res.data,
-              last_modified: getDateFormat(res.data.last_modified),
-            });
-            setRoomContent(res.data.content);
-          }
-          setSaveMsg('saved.');
-          setRoomIdChanged(false);
-        })
-        .catch((err) => {
-          setError('Something went wrong. Please try again later.');
-          console.error(err);
-        });
-    }
-  }, []);
+  }, [roomContent, roomId, resData.content, now, getDateFormat]);
 
   return (
     <>
@@ -188,7 +139,7 @@ const Homepage = () => {
 
       {error ? (
         <div className="h-[90vh] flex flex-col items-center justify-center text-center space-y-4">
-          <img src="/error.png" alt="error" className="w-[300px]" />
+          <img src="/error.png" alt="Error" className="w-[300px]" />
           <h1 className="text-2xl font-semibold">Something went wrong...</h1>
         </div>
       ) : (
@@ -201,7 +152,7 @@ const Homepage = () => {
             onKeyDown={focusRoomContent}
             onChange={handleRoomId}
             onBlur={handleRoomBlur}
-            style={{border: "1px solid lightgray"}}
+            style={{ border: '1px solid lightgray' }}
           />
 
           <Textarea
@@ -210,24 +161,18 @@ const Homepage = () => {
             onChange={handleRoomContent}
             ref={textareaRef}
             rows={10}
-            style={{border: "1px solid lightgray", maxHeight: "360px"}}
+            style={{ border: '1px solid lightgray', maxHeight: '360px' }}
           />
 
           <div className="text-sm flex justify-between">
-            <div>
-              {roomId.length > 0 ? characterSaveMsg() : 'Please Enter room id'}
-            </div>
+            <div>{roomId.length > 0 ? characterSaveMsg() : 'Please Enter room id'}</div>
             <div>{resData.last_modified}</div>
           </div>
         </div>
       )}
 
       <footer className="bg-black text-white text-center text-sm py-2 mt-10 fixed bottom-0 w-full">
-        <a
-          href="#"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+        <a href="#" target="_blank" rel="noopener noreferrer">
           Developed by an Unknown Developer
         </a>
       </footer>
