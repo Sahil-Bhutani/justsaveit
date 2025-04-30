@@ -18,6 +18,7 @@ export async function POST(req: Request) {
 
     if (existing) {
       return NextResponse.json({
+        
         status: 'already',
         data: {
           content: existing.content,
@@ -32,7 +33,10 @@ export async function POST(req: Request) {
       last_modified: new Date().toISOString(),
     });
 
-    return NextResponse.json({ status: 'success' });
+    return NextResponse.json({ status: 'success',
+        data: {
+          content: existing.content,
+          last_modified: existing.last_modified, });
   } catch (error) {
     console.error(error);
     console.log("Error is",error)
