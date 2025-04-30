@@ -145,13 +145,13 @@ const Homepage = () => {
     if (storedRoomId) {
       setRoomId(storedRoomId);
     }
-    if (roomId.length > 0) {
+    if (storedRoomId.length > 0) {
       fetch('/api/createroom', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ room_id: roomId }),
+        body: JSON.stringify({ room_id: storedRoomId }),
       })
         .then((res) => res.json())
         .then((res) => {
