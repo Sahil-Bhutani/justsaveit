@@ -185,7 +185,7 @@ const Homepage = () => {
           <h1 className="text-2xl font-semibold">Something went wrong...</h1>
         </div>
       ) : (
-        <div className="container max-w-2xl mx-auto mt-6 space-y-4">
+        <div className="container max-w-6xl mx-auto mt-6 space-y-4">
           <Input
             type="text"
             placeholder="Enter room id"
@@ -194,6 +194,7 @@ const Homepage = () => {
             onKeyDown={focusRoomContent}
             onChange={handleRoomId}
             onBlur={handleRoomBlur}
+            style={{border: "1px solid lightgray"}}
           />
 
           <Textarea
@@ -202,6 +203,7 @@ const Homepage = () => {
             onChange={handleRoomContent}
             ref={textareaRef}
             rows={10}
+            style={{border: "1px solid lightgray", maxHeight: "360px"}}
           />
 
           <div className="text-sm flex justify-between">
