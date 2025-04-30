@@ -83,7 +83,10 @@ const Homepage = () => {
         .then((res) => res.json())
         .then((res) => {
           if (res.status === 'success') {
-            setResData({ content: '' });
+            setResData({
+              ...res.data,
+              last_modified: getDateFormat(res.data.last_modified),
+            });
           } else if (res.status === 'already') {
             setResData({
               ...res.data,
@@ -156,6 +159,10 @@ const Homepage = () => {
         .then((res) => res.json())
         .then((res) => {
           if (res.status === 'success') {
+            setResData({
+              ...res.data,
+              last_modified: getDateFormat(res.data.last_modified),
+            });
           } else if (res.status === 'already') {
             setResData({
               ...res.data,
