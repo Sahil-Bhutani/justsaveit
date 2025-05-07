@@ -12,6 +12,7 @@ const Homepage = () => {
   const [error, setError] = useState<string>('');
   const [saveMsg, setSaveMsg] = useState<string>('saved.');
   const [isRoomIdChanged, setRoomIdChanged] = useState(true);
+  const [hasFetched, setHasFetched] = useState(false); // New state
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const roomIdRef = useRef<HTMLInputElement>(null);
@@ -47,13 +48,17 @@ const Homepage = () => {
   };
 
   const handleRoomId = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setRoomId(e.target.value);
+    const newId = e.target.value.trim();
+    setRoomId(newId);
+    setRoomContent(''); // Clear previous content
+    setResData({ content: '', last_modified: '' }); // Reset data
     setRoomIdChanged(true);
+    setSaveMsg('');
+    setHasFetched(false);
   }, []);
 
   const handleRoomContent = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setRoomContent(e.target.value);
-    
     if (roomId.length > 0) setSaveMsg('saving....');
   }, [roomId]);
 
@@ -72,11 +77,14 @@ const Homepage = () => {
           ...data.data,
           last_modified: getDateFormat(data.data.last_modified),
         });
+
         if (data.status === 'already') {
           setRoomContent(data.data.content);
         }
+
         setSaveMsg('saved.');
         setRoomIdChanged(false);
+        setHasFetched(true); // Mark fetch done
         localStorage.setItem('localRoomId', id);
       } else {
         setError('Failed to create or retrieve room.');
@@ -105,7 +113,7 @@ const Homepage = () => {
   useEffect(() => {
     let timeOutId: ReturnType<typeof setTimeout>;
 
-    if (roomId.length > 0 && resData.content !== roomContent) {
+    if (roomId.length > 0 && hasFetched && (resData.content ?? '') !== roomContent) {
       timeOutId = setTimeout(() => {
         fetch('/api/updateroom', {
           method: 'POST',
@@ -130,7 +138,7 @@ const Homepage = () => {
     }
 
     return () => clearTimeout(timeOutId);
-  }, [roomContent, roomId, resData.content, now, getDateFormat]);
+  }, [roomContent, roomId, resData.content, now, getDateFormat, hasFetched]);
 
   return (
     <>
@@ -162,6 +170,7 @@ const Homepage = () => {
             onChange={handleRoomContent}
             ref={textareaRef}
             rows={10}
+            disabled={!hasFetched}
             style={{ border: '1px solid lightgray', maxHeight: '360px' }}
           />
 
