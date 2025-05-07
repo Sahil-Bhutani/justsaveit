@@ -53,6 +53,7 @@ const Homepage = () => {
 
   const handleRoomContent = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setRoomContent(e.target.value);
+    setRoomContent("");
     if (roomId.length > 0) setSaveMsg('saving....');
   }, [roomId]);
 
