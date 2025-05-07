@@ -164,16 +164,15 @@ const Homepage = () => {
             style={{ border: '1px solid lightgray' }}
           />
 
-          <Textarea
-            placeholder="Your content..."
-            value={roomContent}
-            onChange={handleRoomContent}
-            ref={textareaRef}
-            rows={10}
-            disabled={!hasFetched}
-            style={{ border: '1px solid lightgray', maxHeight: '360px' }}
-          />
-
+      <Textarea
+  placeholder={hasFetched ? "Your content..." : "Please wait…"}
+  value={roomContent}
+  onChange={handleRoomContent}
+  ref={textareaRef}
+  rows={10}
+  disabled={!hasFetched}
+  style={{ border: '1px solid lightgray', maxHeight: '360px' }}
+/>
           <div className="text-sm flex justify-between">
             <div>{roomId.length > 0 ? characterSaveMsg() : 'Please Enter room id'}</div>
             <div>{resData.last_modified}</div>
