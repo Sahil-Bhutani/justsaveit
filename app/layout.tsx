@@ -11,6 +11,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  
   return (
     <html lang="en">
       <link rel="preconnect" href="https://fonts.googleapis.com" />
