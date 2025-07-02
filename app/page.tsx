@@ -40,9 +40,18 @@ const Homepage = () => {
   };
 
   const handleClear = () => {
-    setRoomContent("");
+    const clearedContent = "";
+    setRoomContent(clearedContent);
     setSaveMsg("cleared.");
     setCleared(true);
+
+    if (roomId && socketRef.current) {
+      socketRef.current.emit("content-update", {
+        roomId,
+        content: clearedContent,
+      });
+    }
+
     setTimeout(() => setCleared(false), 2000);
   };
 
