@@ -346,7 +346,7 @@ const Homepage = () => {
       )}
 
       <footer className="bg-black text-white text-center text-base py-2 mt-10 fixed bottom-0 w-full">
-        Compiled by an anonymous engineer
+        Compiled by an Souvik Pal
       </footer>
     </>
   );
